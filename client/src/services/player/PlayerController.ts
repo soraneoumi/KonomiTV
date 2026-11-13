@@ -272,11 +272,9 @@ class PlayerController {
         // ブラウザが MSE in Worker での H.265 / HEVC 再生に対応しているかどうか
         const is_hevc_video_supported_in_worker = await mpegts.supportWorkerForMSEH265Playback();
 
-        // WebGL2 がサポートされていて、かつデバイスが自動デインタレースに対応していない場合は、
-        // mpeg2toh264 で再生する際に YADIF Deinterlacer を有効にする
-        // 万が一 decoder_deinterlace_probe_result がまだ取得できていない場合は、安全側に倒すために false が入る
-        const is_yadif_enabled = is_yadif_supported === true &&
-            decoder_deinterlace_probe_result?.deinterlaces !== true;
+        // mpeg2toh264 decodes the pictures itself and shows them through the deinterlacer, so the
+        // deinterlacer is needed wherever WebGL2 can build it, whether or not the device's own decoder deinterlaces
+        const is_yadif_enabled = is_yadif_supported === true;
 
         // 文字スーパーの表示設定
         // ライブ視聴とビデオ視聴で設定キーが異なる
@@ -735,7 +733,7 @@ class PlayerController {
                     // 録画再生では、DB に記録済みのサービス ID がある場合だけ指定する
                     serviceId: this.playback_mode === 'Live' ?
                         channels_store.channel.current.service_id : player_store.recorded_program.service_id ?? undefined,
-                    // デコーダーが自動でデインタレースしてくれない端末だけ、YADIF Deinterlacer を通した Canvas を実際の表示映像として利用する
+                    // The pictures are decoded in software and reach the screen only through the deinterlacer's canvas
                     // TODO: Document Picture-in-Picture API に対応した環境では問題ないが、Picture-in-Picture API のみに対応した環境、
                     // かつデコーダーが自動でデインタレースしてくれない環境では、Picture-in-Picture するとインタレ未解除の映像が
                     // ミニプレイヤーで表示されると思われるが、技術的に改善が難しいのと、ミニプレイヤーならジャギ気にならんやろと言うことで当面仕様とする
@@ -929,21 +927,6 @@ class PlayerController {
 
         // デバッグ用にプレイヤーインスタンスも window 直下に入れる
         (window as any).player = this.player;
-
-        // 万が一再生開始後にデバイスが自動デインタレースに対応していることが判明した場合は、再起動せず Deinterlacer の Canvas だけを停止する
-        // この設定値も更新しておくことで、同じ DPlayer 内で後からオリジナル画質へ切り替えた場合にも判定結果を適用する
-        void decoder_deinterlace_probe_promise.then((result) => {
-            if (result?.deinterlaces !== true || this.player === null) return;
-            this.player.options.pluginOptions!.mpeg2toh264!.deinterlace = false;
-            this.player.options.pluginOptions!.mpeg2toh264!.deinterlacer = undefined;
-            // While the pictures are decoded in software the element carries none, so the deinterlacer is
-            // the only thing showing them: turning it off there would leave them unfiltered, not hand them
-            // to the decoder. This load keeps filtering; the next one starts without the deinterlacer.
-            if (this.player.type === 'mpeg2toh264' && this.player.plugins.mpeg2toh264 &&
-                this.player.plugins.mpeg2toh264.softwareDecoding !== true) {
-                this.player.plugins.mpeg2toh264.deinterlace = false;
-            }
-        });
 
         // この時点で DPlayer のコンテナ要素に dplayer-mobile クラスが付与されている場合、
         // DPlayer は音量コントロールがないスマホ向けの UI になっている
@@ -1446,10 +1429,16 @@ class PlayerController {
                     this.player.video.oncanplaythrough = on_canplay;
 
                     // 変換処理が失敗した場合は DPlayer のエラー表示を残し、プレイヤーを停止状態にする
-                    mpeg2toh264_player.addEventListener('error', () => {
+                    // A load that cannot start at all has failed before this point is reached, so the state is checked as well
+                    const on_error = () => {
                         window.clearTimeout(startup_timeout_id);
                         this.player?.pause();
-                    }, {once: true});
+                    };
+                    if (mpeg2toh264_player.state === 'error') {
+                        on_error();
+                    } else {
+                        mpeg2toh264_player.addEventListener('error', on_error, {once: true});
+                    }
                     this.player.play();
 
                     // オリジナル画質では mpeg2toh264 自身がバッファを適切に管理してくれるため、mpegts.js 専用の同期処理はスキップする
