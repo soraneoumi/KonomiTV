@@ -936,7 +936,11 @@ class PlayerController {
             if (result?.deinterlaces !== true || this.player === null) return;
             this.player.options.pluginOptions!.mpeg2toh264!.deinterlace = false;
             this.player.options.pluginOptions!.mpeg2toh264!.deinterlacer = undefined;
-            if (this.player.type === 'mpeg2toh264' && this.player.plugins.mpeg2toh264) {
+            // While the pictures are decoded in software the element carries none, so the deinterlacer is
+            // the only thing showing them: turning it off there would leave them unfiltered, not hand them
+            // to the decoder. This load keeps filtering; the next one starts without the deinterlacer.
+            if (this.player.type === 'mpeg2toh264' && this.player.plugins.mpeg2toh264 &&
+                this.player.plugins.mpeg2toh264.softwareDecoding !== true) {
                 this.player.plugins.mpeg2toh264.deinterlace = false;
             }
         });
