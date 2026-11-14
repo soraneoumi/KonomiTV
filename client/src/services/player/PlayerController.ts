@@ -257,11 +257,13 @@ class PlayerController {
         // KeyboardShortcutManager がこのタイミングで破棄される
         player_store.is_player_initialized = true;
 
+        // 通信節約モードが有効かどうか
+        const is_data_saver_mode = this.playback_mode === 'Live' ?
+            this.quality_profile.tv_data_saver_mode : this.quality_profile.video_data_saver_mode;
+
         // ブラウザが H.265 / HEVC の再生に対応していて、かつ通信節約モードが有効なとき、H.265 / HEVC で再生する
         let is_hevc_playback = false;
-        if (PlayerUtils.isHEVCVideoSupported() &&
-            ((this.playback_mode === 'Live' && this.quality_profile.tv_data_saver_mode === true) ||
-             (this.playback_mode === 'Video' && this.quality_profile.video_data_saver_mode === true))) {
+        if (PlayerUtils.isHEVCVideoSupported() && is_data_saver_mode === true) {
             is_hevc_playback = true;
         }
 
@@ -445,10 +447,18 @@ class PlayerController {
                     }
                     // デフォルトの画質
                     let default_quality: string;
-                    // デフォルト画質に original が指定されている場合、ラジオチャンネルを除きデフォルト画質を "Original (MPEG-2)" に設定する
+                    // デフォルト画質に original が指定されている場合、ラジオチャンネルと通信節約モード時を除きデフォルト画質を "Original (MPEG-2)" に設定する
                     if (this.quality_profile.tv_streaming_quality === 'original') {
                         // ラジオチャンネルは mpeg2toh264 に対応していないため、1080p 固定 (実際には映像エンコードは行われない)
-                        default_quality = channels_store.channel.current.is_radiochannel === true ? '1080p' : 'Original (MPEG-2)';
+                        if (channels_store.channel.current.is_radiochannel === true) {
+                            default_quality = '1080p';
+                        // The quality setting is shared between devices but data saver mode is not, so a
+                        // device in data saver mode replaces original here instead of rewriting the setting
+                        } else if (is_data_saver_mode === true) {
+                            default_quality = '1080p (60fps)';
+                        } else {
+                            default_quality = 'Original (MPEG-2)';
+                        }
                     } else {
                         // DPlayer は表示名と完全一致する画質を選ぶため、1080p-60fps のみ表示名へ変換する
                         default_quality = this.quality_profile.tv_streaming_quality === '1080p-60fps' ?
@@ -527,9 +537,11 @@ class PlayerController {
                     // デフォルトの画質
                     // ビデオ視聴時はラジオは考慮しない
                     let default_quality: string;
-                    // デフォルト画質に original が指定されている場合、非対応の録画番組を除き、デフォルト画質を "Original (MPEG-2)" に設定する
+                    // デフォルト画質に original が指定されている場合、非対応の録画番組と通信節約モード時を除き、デフォルト画質を "Original (MPEG-2)" に設定する
                     if (this.quality_profile.video_streaming_quality === 'original') {
-                        default_quality = is_original_quality_available === true ? 'Original (MPEG-2)' : original_quality_fallback;
+                        // Data saver mode replaces original here for the same reason as in live playback
+                        default_quality = is_original_quality_available === true && is_data_saver_mode === false ?
+                            'Original (MPEG-2)' : original_quality_fallback;
                     } else {
                         // DPlayer は表示名と完全一致する画質を選ぶため、1080p-60fps のみ表示名へ変換する
                         default_quality = this.quality_profile.video_streaming_quality === '1080p-60fps' ?

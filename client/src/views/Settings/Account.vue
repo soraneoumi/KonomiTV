@@ -93,7 +93,7 @@
                     </label>
                     <label class="settings__item-label" for="sync_settings">
                         <strong>ピン留めしたチャンネル・マイリスト・視聴履歴・ハッシュタグリストなども一緒に同期されます。</strong><br>
-                        なお、デバイス固有の設定（画質設定など）は、同期後も各デバイスで個別に反映されます。<br>
+                        デフォルトの画質は同期されますが、通信節約モードなどのデバイス固有の設定は、同期後も各デバイスで個別に反映されます。<br>
                     </label>
                     <v-switch class="settings__item-switch" color="primary" id="sync_settings" hide-details
                         v-model="sync_settings">

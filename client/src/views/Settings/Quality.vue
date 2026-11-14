@@ -22,7 +22,7 @@
                 <Icon icon="fluent:tv-20-filled" width="22px" />
                 <span class="ml-2">テレビのライブストリーミング</span>
             </div>
-            <div class="settings__item settings__item--sync-disabled">
+            <div class="settings__item">
                 <div class="settings__item-heading">テレビのデフォルトのストリーミング画質</div>
                 <div class="settings__item-label">
                     ライブ視聴時に最初に適用される、デフォルトの画質を設定します。<br>
@@ -44,10 +44,18 @@
                     :density="is_form_dense ? 'compact' : 'default'" v-if="network_circuit !== 'モバイル回線時'"
                     :items="tv_streaming_quality" v-model="settingsStore.settings.tv_streaming_quality">
                 </v-select>
+                <div class="settings__item-label mt-2" v-if="network_circuit !== 'モバイル回線時' &&
+                    settingsStore.settings.tv_streaming_quality === 'original' && settingsStore.settings.tv_data_saver_mode === true">
+                    このデバイスでは通信節約モードがオンのため、Original (MPEG-2) の代わりに 1080p (60fps) で再生されます。<br>
+                </div>
                 <v-select class="settings__item-form" color="primary" variant="outlined" hide-details
                     :density="is_form_dense ? 'compact' : 'default'" v-if="network_circuit === 'モバイル回線時'"
                     :items="tv_streaming_quality_cellular" v-model="settingsStore.settings.tv_streaming_quality_cellular">
                 </v-select>
+                <div class="settings__item-label mt-2" v-if="network_circuit === 'モバイル回線時' &&
+                    settingsStore.settings.tv_streaming_quality_cellular === 'original' && settingsStore.settings.tv_data_saver_mode_cellular === true">
+                    このデバイスでは通信節約モードがオンのため、Original (MPEG-2) の代わりに 1080p (60fps) で再生されます。<br>
+                </div>
             </div>
             <div class="settings__item settings__item--switch settings__item--sync-disabled"
                 :class="{'settings__item--disabled': PlayerUtils.isHEVCVideoSupported() === false}">
@@ -112,7 +120,7 @@
                 <Icon icon="fluent:movies-and-tv-20-filled" width="22px" />
                 <span class="ml-2">ビデオのオンデマンドストリーミング</span>
             </div>
-            <div class="settings__item settings__item--sync-disabled">
+            <div class="settings__item">
                 <div class="settings__item-heading">ビデオのデフォルトのストリーミング画質</div>
                 <div class="settings__item-label">
                     録画再生時に最初に適用される、デフォルトの画質を設定します。<br>
@@ -137,10 +145,18 @@
                     :density="is_form_dense ? 'compact' : 'default'" v-if="network_circuit !== 'モバイル回線時'"
                     :items="video_streaming_quality" v-model="settingsStore.settings.video_streaming_quality">
                 </v-select>
+                <div class="settings__item-label mt-2" v-if="network_circuit !== 'モバイル回線時' &&
+                    settingsStore.settings.video_streaming_quality === 'original' && settingsStore.settings.video_data_saver_mode === true">
+                    このデバイスでは通信節約モードがオンのため、Original (MPEG-2) の代わりに 1080p (60fps) / 1080p (24fps モード有効時) で再生されます。<br>
+                </div>
                 <v-select class="settings__item-form" color="primary" variant="outlined" hide-details
                     :density="is_form_dense ? 'compact' : 'default'" v-if="network_circuit === 'モバイル回線時'"
                     :items="video_streaming_quality_cellular" v-model="settingsStore.settings.video_streaming_quality_cellular">
                 </v-select>
+                <div class="settings__item-label mt-2" v-if="network_circuit === 'モバイル回線時' &&
+                    settingsStore.settings.video_streaming_quality_cellular === 'original' && settingsStore.settings.video_data_saver_mode_cellular === true">
+                    このデバイスでは通信節約モードがオンのため、Original (MPEG-2) の代わりに 1080p (60fps) / 1080p (24fps モード有効時) で再生されます。<br>
+                </div>
             </div>
             <div class="settings__item settings__item--switch settings__item--sync-disabled"
                 :class="{'settings__item--disabled': PlayerUtils.isHEVCVideoSupported() === false}">
@@ -227,10 +243,6 @@ const QUALITY_H265_TITLES: Record<Exclude<LiveStreamingQuality | VideoStreamingQ
     '240p': '240p (約0.20GB/h / 平均0.4Mbps)',
 };
 
-// 通信節約モードオン時に Original 画質と矛盾しないよう、1080p (60fps) へ自動切り替えした際の告知文
-const DATA_SAVER_ORIGINAL_AUTO_SWITCH_MESSAGE =
-    '通信節約モードは Original (MPEG-2) 画質に対応していません。\n画質を 1080p (60fps) に自動で切り替えました。';
-
 // モバイル回線プロファイルで Original 画質を選択した際の警告文
 const MOBILE_ORIGINAL_QUALITY_WARNING_MESSAGE =
     'Original (MPEG-2) 画質は再エンコードなしでそのまま配信するため、通信量が非常に多くなります。\nモバイル回線で屋外から視聴する際は、通信量に十分ご注意ください。';
@@ -301,30 +313,6 @@ export default defineComponent({
         },
     },
     watch: {
-        'settingsStore.settings.tv_data_saver_mode': {
-            immediate: true,
-            handler(value: boolean) {
-                this.ensureQualityCompatibleWithDataSaverMode('tv', value);
-            },
-        },
-        'settingsStore.settings.tv_data_saver_mode_cellular': {
-            immediate: true,
-            handler(value: boolean) {
-                this.ensureQualityCompatibleWithDataSaverMode('tv_cellular', value);
-            },
-        },
-        'settingsStore.settings.video_data_saver_mode': {
-            immediate: true,
-            handler(value: boolean) {
-                this.ensureQualityCompatibleWithDataSaverMode('video', value);
-            },
-        },
-        'settingsStore.settings.video_data_saver_mode_cellular': {
-            immediate: true,
-            handler(value: boolean) {
-                this.ensureQualityCompatibleWithDataSaverMode('video_cellular', value);
-            },
-        },
         'settingsStore.settings.tv_streaming_quality_cellular'(value: LiveStreamingQuality, old_value: LiveStreamingQuality | undefined) {
             this.notifyMobileOriginalQualityWarning(value, old_value, this.settingsStore.settings.tv_data_saver_mode_cellular);
         },
@@ -333,35 +321,6 @@ export default defineComponent({
         },
     },
     methods: {
-
-        /**
-         * 通信節約モードオン時に Original 画質が選択されていた場合、1080p (60fps) へ自動切り替えする
-         * @param target 画質設定の対象
-         * @param data_saver_mode 通信節約モードがオンかどうか
-         */
-        ensureQualityCompatibleWithDataSaverMode(
-            target: 'tv' | 'tv_cellular' | 'video' | 'video_cellular',
-            data_saver_mode: boolean,
-        ): void {
-            if (data_saver_mode === false) {
-                return;
-            }
-
-            const setting_key_map = {
-                tv: 'tv_streaming_quality',
-                tv_cellular: 'tv_streaming_quality_cellular',
-                video: 'video_streaming_quality',
-                video_cellular: 'video_streaming_quality_cellular',
-            } as const;
-            const setting_key = setting_key_map[target];
-
-            if (this.settingsStore.settings[setting_key] !== 'original') {
-                return;
-            }
-
-            this.settingsStore.settings[setting_key] = '1080p-60fps';
-            Message.warning(DATA_SAVER_ORIGINAL_AUTO_SWITCH_MESSAGE, 10);  // 10秒表示
-        },
 
         /**
          * モバイル回線プロファイルで通信節約モードオフの状態から Original 画質が選ばれた際に警告を表示する
@@ -380,8 +339,8 @@ export default defineComponent({
             if (value !== 'original') {
                 return;
             }
-            // 通信節約モードオン時の自動切り替え (original → 1080p-60fps) では警告しない
-            if (old_value === undefined || old_value === 'original') {
+            // 初回の値の設定時には警告しない
+            if (old_value === undefined) {
                 return;
             }
 
