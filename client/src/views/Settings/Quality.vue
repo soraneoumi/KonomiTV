@@ -339,7 +339,7 @@ export default defineComponent({
             if (value !== 'original') {
                 return;
             }
-            // 初回の値の設定時には警告しない
+            // No warning for the first value the setting receives
             if (old_value === undefined) {
                 return;
             }
