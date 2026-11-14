@@ -240,9 +240,9 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
 
     // ***** 設定 → 画質 *****
 
-    // テレビのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: Original) (同期無効)
+    // テレビのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: Original)
     tv_streaming_quality: 'original',
-    // テレビのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p) (同期無効)
+    // テレビのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p)
     tv_streaming_quality_cellular: '480p',
     // テレビを通信節約モードで視聴する (Wi-Fi 回線時)  (Default: オフ) (同期無効)
     tv_data_saver_mode: false,
@@ -257,9 +257,9 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
     // テレビを 24fps モードで視聴する (モバイル回線時)  (Default: オフ) (同期無効)
     tv_24fps_mode_cellular: false,
 
-    // ビデオのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: Original) (同期無効)
+    // ビデオのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: Original)
     video_streaming_quality: 'original',
-    // ビデオのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p) (同期無効)
+    // ビデオのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p)
     video_streaming_quality_cellular: '480p',
     // ビデオを通信節約モードで視聴する (Wi-Fi 回線時)  (Default: オフ) (同期無効)
     video_data_saver_mode: false,
@@ -395,16 +395,16 @@ export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'tv_panel_active_tab',
     'video_panel_active_tab',
     'video_watched_history_max_count',
-    // tv_streaming_quality: 同期無効
-    // tv_streaming_quality_cellular: 同期無効
+    'tv_streaming_quality',
+    'tv_streaming_quality_cellular',
     // tv_data_saver_mode: 同期無効
     // tv_data_saver_mode_cellular: 同期無効
     // tv_low_latency_mode: 同期無効
     // tv_low_latency_mode_cellular: 同期無効
     // tv_24fps_mode: 同期無効
     // tv_24fps_mode_cellular: 同期無効
-    // video_streaming_quality: 同期無効
-    // video_streaming_quality_cellular: 同期無効
+    'video_streaming_quality',
+    'video_streaming_quality_cellular',
     // video_data_saver_mode: 同期無効
     // video_data_saver_mode_cellular: 同期無効
     // video_24fps_mode: 同期無効

@@ -36,10 +36,15 @@ from app.constants import (
 from app.utils.TSInformation import TerrestrialRegion
 
 
+# The quality names the client stores in its settings, without the -hevc / -10bit / -24fps
+# suffixes the streaming API adds at playback time; must match LiveStreamingQuality and
+# VideoStreamingQuality in client/src/stores/SettingsStore.ts
+StreamingQuality = Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p']
+
+
 # クライアント設定を表す Pydantic モデル (クライアント設定同期用 API で利用)
 # デバイス間で同期するとかえって面倒なことになりそうな設定は除外されている
 # 詳細は client/src/services/Settings.ts と client/src/stores/SettingsStore.ts を参照
-
 class ClientSettings(BaseModel):
     last_synced_at: Annotated[float, PositiveFloat] = 0.0
     # showed_panel_last_time: 同期無効
@@ -87,16 +92,16 @@ class ClientSettings(BaseModel):
     tv_panel_active_tab: Literal['Program', 'Channel', 'Comment', 'Twitter'] = 'Program'
     video_panel_active_tab: Literal['RecordedProgram', 'Series', 'Comment', 'Twitter'] = 'RecordedProgram'
     video_watched_history_max_count: Annotated[int, PositiveInt] = 50
-    # tv_streaming_quality: 同期無効
-    # tv_streaming_quality_cellular: 同期無効
+    tv_streaming_quality: StreamingQuality = 'original'
+    tv_streaming_quality_cellular: StreamingQuality = '480p'
     # tv_data_saver_mode: 同期無効
     # tv_data_saver_mode_cellular: 同期無効
     # tv_low_latency_mode: 同期無効
     # tv_low_latency_mode_cellular: 同期無効
     # tv_24fps_mode: 同期無効
     # tv_24fps_mode_cellular: 同期無効
-    # video_streaming_quality: 同期無効
-    # video_streaming_quality_cellular: 同期無効
+    video_streaming_quality: StreamingQuality = 'original'
+    video_streaming_quality_cellular: StreamingQuality = '480p'
     # video_data_saver_mode: 同期無効
     # video_data_saver_mode_cellular: 同期無効
     # video_24fps_mode: 同期無効
