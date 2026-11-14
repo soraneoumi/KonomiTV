@@ -257,7 +257,6 @@ class PlayerController {
         // KeyboardShortcutManager がこのタイミングで破棄される
         player_store.is_player_initialized = true;
 
-        // 通信節約モードが有効かどうか
         const is_data_saver_mode = this.playback_mode === 'Live' ?
             this.quality_profile.tv_data_saver_mode : this.quality_profile.video_data_saver_mode;
 
@@ -447,7 +446,7 @@ class PlayerController {
                     }
                     // デフォルトの画質
                     let default_quality: string;
-                    // デフォルト画質に original が指定されている場合、ラジオチャンネルと通信節約モード時を除きデフォルト画質を "Original (MPEG-2)" に設定する
+                    // With original as the default quality, play original except on radio channels and in data saver mode
                     if (this.quality_profile.tv_streaming_quality === 'original') {
                         // ラジオチャンネルは mpeg2toh264 に対応していないため、1080p 固定 (実際には映像エンコードは行われない)
                         if (channels_store.channel.current.is_radiochannel === true) {
@@ -537,7 +536,7 @@ class PlayerController {
                     // デフォルトの画質
                     // ビデオ視聴時はラジオは考慮しない
                     let default_quality: string;
-                    // デフォルト画質に original が指定されている場合、非対応の録画番組と通信節約モード時を除き、デフォルト画質を "Original (MPEG-2)" に設定する
+                    // With original as the default quality, play original except for recordings it cannot handle and in data saver mode
                     if (this.quality_profile.video_streaming_quality === 'original') {
                         // Data saver mode replaces original here for the same reason as in live playback
                         default_quality = is_original_quality_available === true && is_data_saver_mode === false ?
