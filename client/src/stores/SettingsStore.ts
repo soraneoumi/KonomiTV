@@ -240,8 +240,8 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
 
     // ***** 設定 → 画質 *****
 
-    // テレビのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: 1080p) (同期無効)
-    tv_streaming_quality: '1080p',
+    // テレビのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: Original) (同期無効)
+    tv_streaming_quality: 'original',
     // テレビのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p) (同期無効)
     tv_streaming_quality_cellular: '480p',
     // テレビを通信節約モードで視聴する (Wi-Fi 回線時)  (Default: オフ) (同期無効)
@@ -257,8 +257,8 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
     // テレビを 24fps モードで視聴する (モバイル回線時)  (Default: オフ) (同期無効)
     tv_24fps_mode_cellular: false,
 
-    // ビデオのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: 1080p) (同期無効)
-    video_streaming_quality: '1080p',
+    // ビデオのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: Original) (同期無効)
+    video_streaming_quality: 'original',
     // ビデオのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p) (同期無効)
     video_streaming_quality_cellular: '480p',
     // ビデオを通信節約モードで視聴する (Wi-Fi 回線時)  (Default: オフ) (同期無効)
