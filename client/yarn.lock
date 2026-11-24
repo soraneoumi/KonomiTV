@@ -2274,9 +2274,9 @@ doctrine@^3.0.0:
   dependencies:
     esutils "^2.0.2"
 
-"dplayer@github:soraneoumi/DPlayer#97ba2c0672952caf0acc139b605beca08c4cbc88":
+"dplayer@github:soraneoumi/DPlayer#5f0a93ac749fa61fde39049ad8b145143408cc68":
   version "1.33.4"
-  resolved "https://codeload.github.com/soraneoumi/DPlayer/tar.gz/97ba2c0672952caf0acc139b605beca08c4cbc88"
+  resolved "https://codeload.github.com/soraneoumi/DPlayer/tar.gz/5f0a93ac749fa61fde39049ad8b145143408cc68"
   dependencies:
     aribb24.js "~1.11.5"
     axios "^1.7.2"
@@ -3588,9 +3588,9 @@ mitt@^3.0.1:
   resolved "https://registry.yarnpkg.com/mitt/-/mitt-3.0.1.tgz#ea36cf0cc30403601ae074c8f77b7092cdab36d1"
   integrity sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==
 
-"mpeg2toh264@github:soraneoumi/mpeg2toh264#166dbd0ca4c51cb6b8a0aad4422a055d4767395b":
+"mpeg2toh264@github:soraneoumi/mpeg2toh264#ddbb5639c32d072f4620fa1baf862a1019f9a065":
   version "0.0.1"
-  resolved "https://codeload.github.com/soraneoumi/mpeg2toh264/tar.gz/166dbd0ca4c51cb6b8a0aad4422a055d4767395b"
+  resolved "https://codeload.github.com/soraneoumi/mpeg2toh264/tar.gz/ddbb5639c32d072f4620fa1baf862a1019f9a065"
 
 "mpegts.js@github:tsukumijima/mpegts.js#9f6c3dbb661754f0d3e7b42949fbcf698883d480":
   version "1.8.2"
