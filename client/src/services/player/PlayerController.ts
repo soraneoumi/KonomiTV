@@ -283,9 +283,8 @@ class PlayerController {
             settings_store.settings.tv_show_superimpose : settings_store.settings.video_show_superimpose;
 
         // シーク秒数が指定されていない（初回ロード時）は、視聴履歴があればその位置から再生を開始する
-        // なければ録画開始マージン + 2秒シークする
-        // 2秒プラスしているのは、実際の放送波では EPG (EIT[p/f]) の変更より2〜4秒後に実際に番組が切り替わる場合が多いため
-        // この誤差は放送局や TOT 精度によっておそらく異なるので、本編の最初が削れないように2秒のプラスに留めている
+        // Without one, a recording plays from its first second: what was recorded ahead of the programme is part of
+        // the recording, and guessing where the programme itself begins cut into recordings that begin with it
         // seek_seconds はこの後 DPlayer を初期化した後の初回シーク時に参照される
         let seek_seconds = options.seek_seconds;
         // URL で指定された再生位置から再生を始めるか (視聴履歴からの再開と区別し、続きからの通知を視聴履歴のときだけ出すため)
@@ -307,8 +306,8 @@ class PlayerController {
                     seek_seconds = history.last_playback_position;
                     console.log(`\u001b[31m[PlayerController] Seeking to ${seek_seconds} seconds. (Watched History)`);
                 } else {
-                    seek_seconds = player_store.recorded_program.recording_start_margin + 2;
-                    console.log(`\u001b[31m[PlayerController] Seeking to ${seek_seconds} seconds. (Recording Start Margin + 2)`);
+                    seek_seconds = 0;
+                    console.log(`\u001b[31m[PlayerController] Seeking to ${seek_seconds} seconds. (Start of the recording)`);
                 }
             } else {
                 // ライブ再生時は使わない値だが、型エラー回避のために 0 を設定
@@ -1025,7 +1024,7 @@ class PlayerController {
                 if (this.player === null) return;
 
                 // 初期化前に算出しておいた秒数分初回シークを実行
-                // 録画マージン分シークするケースと、プレイヤー再起動前の再生位置を復元するケースの2通りある
+                // The start of the recording, the position watched up to, or the position before the player restarted
                 this.player.seek(seek_seconds);
 
                 // 初回シーク時は確実にエンコーダーの起動が発生するため、ロードに若干時間がかかる
@@ -1036,7 +1035,7 @@ class PlayerController {
 
                 // 視聴履歴から再生を再開する場合のみ通知を表示
                 // そうでない場合 (URL で指定された再生位置から始める場合を含む) は seek() 実行後に表示される通知を即座に非表示にする
-                if (seek_seconds > player_store.recorded_program.recording_start_margin + 2 && is_url_playback_position === false) {
+                if (seek_seconds > 0 && is_url_playback_position === false) {
                     this.player.notice('前回視聴した続きから再生します');
                 } else {
                     this.player.hideNotice();
