@@ -184,7 +184,6 @@ async def UpdateDatabaseAPI():
     """
 
     await Channel.update()
-    await Channel.updateJikkyoStatus()
     await Program.update(multiprocess=True)
 
 

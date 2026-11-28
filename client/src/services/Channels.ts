@@ -37,7 +37,6 @@ export interface IChannel {
     // 広域放送局の場合は複数の地域名が含まれる
     // 地デジ以外のチャンネルまたは地域が特定できない場合は null
     terrestrial_regions: TerrestrialRegion[] | null;
-    jikkyo_force: number | null;
     is_subchannel: boolean;
     is_radiochannel: boolean;
     is_watchable: boolean;
@@ -63,7 +62,6 @@ export const ILiveChannelDefault: ILiveChannel = {
     channel_number: '---',
     type: 'GR',
     name: '取得中…',
-    jikkyo_force: null,
     is_subchannel: false,
     is_radiochannel: false,
     is_watchable: true,
@@ -84,13 +82,14 @@ export interface ILiveChannelsList {
     BS4K: ILiveChannel[];
 }
 
-/** ニコニコ実況の WebSocket API の情報を表すインターフェイス */
-export interface IJikkyoWebSocketInfo {
-    watch_session_url: string | null;
+/** ニコニコ実況のセッション情報を表すインターフェイス */
+export interface IJikkyoSessionInfo {
+    // Whether niconico has a jikkyo channel for this channel; the comment stream is refused otherwise
+    is_available: boolean;
+    // The logged-in user's own nicolive watch session (single-use), used only to post comments
     nicolive_watch_session_url: string | null;
+    // Why the URL could not be obtained for a user with a linked niconico account
     nicolive_watch_session_error: string | null;
-    comment_session_url: string | null;
-    is_nxjikkyo_exclusive: boolean;
 }
 
 
@@ -137,18 +136,21 @@ class Channels {
 
 
     /**
-     * 指定されたチャンネルに対応する、ニコニコ実況・NX-Jikkyo とコメントを送受信するための WebSocket API の情報を取得する
+     * 指定されたチャンネルに対応するニコニコ実況のセッション情報を取得する
      * @param channel_id チャンネル ID (id or display_channel_id)
-     * @return ニコニコ実況・NX-Jikkyo とコメントを送受信するための WebSocket API の情報
+     * @param show_error whether a failed request shows an error; retries pass false so that they stay silent for the viewer
+     * @return ニコニコ実況のセッション情報
      */
-    static async fetchWebSocketInfo(channel_id: string): Promise<IJikkyoWebSocketInfo | null> {
+    static async fetchJikkyoSessionInfo(channel_id: string, show_error: boolean = true): Promise<IJikkyoSessionInfo | null> {
 
         // API リクエストを実行
-        const response = await APIClient.get<IJikkyoWebSocketInfo>(`/channels/${channel_id}/jikkyo`);
+        const response = await APIClient.get<IJikkyoSessionInfo>(`/channels/${channel_id}/jikkyo`);
 
         // エラー処理
         if (response.type === 'error') {
-            APIClient.showGenericError(response, 'コメント送受信用 WebSocket API の情報を取得できませんでした。');
+            if (show_error === true) {
+                APIClient.showGenericError(response, 'ニコニコ実況の情報を取得できませんでした。');
+            }
             return null;
         }
 

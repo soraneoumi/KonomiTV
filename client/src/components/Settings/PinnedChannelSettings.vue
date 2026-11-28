@@ -110,9 +110,6 @@ export default defineComponent({
         await this.channelsStore.update();
 
         // ピン留め中チャンネルのリストを pinned_channel_ids の順序に基づいて直接構築する
-        // channels_list_with_pinned ゲッターを使うと tv_channel_sort_by_jikkyo_force がオンの時に
-        // 実況勢い順にソートされたリストが返されてしまい、watcher が pinned_channel_ids を
-        // 実況勢い順で上書きしてしまうため、ここでは channels_list から直接構築する
         const all_channels: ILiveChannel[] = Object.values(this.channelsStore.channels_list).flat();
         this.pinned_channels = this.settingsStore.settings.pinned_channel_ids
             .map(id => all_channels.find(channel => channel.id === id))

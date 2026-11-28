@@ -39,7 +39,6 @@ class Channel(PydanticModel):
     # 広域放送局の場合は複数の地域名が含まれる
     # 地デジ以外のチャンネルまたは地域が特定できない場合は None
     terrestrial_regions: list[TerrestrialRegion] | None = None
-    jikkyo_force: int | None = None
     is_subchannel: bool = False
     is_radiochannel: bool = False
     is_watchable: bool = False
@@ -768,17 +767,13 @@ class DataBroadcastingInternetStatus(BaseModel):
 
 # ***** ニコニコ実況連携 *****
 
-class JikkyoWebSocketInfo(BaseModel):
-    # 視聴セッション維持用 WebSocket API の URL (NX-Jikkyo)
-    watch_session_url: str | None
-    # 視聴セッション維持用 WebSocket API の URL (ニコニコ生放送)
-    nicolive_watch_session_url: str | None = None
-    # 視聴セッション維持用 WebSocket API のエラー情報 (ニコニコ生放送)
-    nicolive_watch_session_error: str | None = None
-    # コメント受信用 WebSocket API の URL (NX-Jikkyo)
-    comment_session_url: str | None
-    # 現在は NX-Jikkyo のみ存在するニコニコ実況チャンネルかどうか
-    is_nxjikkyo_exclusive: bool
+class JikkyoSessionInfo(BaseModel):
+    # niconico has a jikkyo channel for this channel
+    is_available: bool
+    # the logged-in user's own watch session, used only to post comments
+    nicolive_watch_session_url: str | None
+    # why that URL could not be obtained for a user who has a linked account
+    nicolive_watch_session_error: str | None
 
 class JikkyoComment(BaseModel):
     time: float

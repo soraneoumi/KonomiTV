@@ -255,7 +255,6 @@ async def DecodeEDCBReserveData(
             channel_number = '001',  # 取得できないため一旦 '001' を設定
             type = TSInformation.getNetworkType(network_id),
             name = service_name,
-            jikkyo_force = False,
             is_subchannel = False,
             is_radiochannel = False,
             is_watchable = False,

@@ -75,7 +75,6 @@ export interface ILocalClientSettings extends IClientSettings {
     timetable_genre_colors: ITimeTableGenreColors;
     show_player_background_image: boolean;
     use_pure_black_player_background: boolean;
-    tv_channel_sort_by_jikkyo_force: boolean;
     tv_channel_up_down_buttons_reverse: boolean;
     tv_channel_selection_requires_alt_key: boolean;
     use_28hour_clock: boolean;
@@ -111,7 +110,7 @@ export interface ILocalClientSettings extends IClientSettings {
     capture_filename_pattern: string;
     capture_copy_to_clipboard: boolean;
     sync_settings: boolean;
-    prefer_posting_to_nicolive: boolean;
+    connect_to_niconico_jikkyo: boolean;
     comment_speed_rate: number;
     comment_font_size: number;
     close_comment_form_after_sending: boolean;
@@ -218,8 +217,6 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
     show_player_background_image: true,
     // プレイヤー表示領域の背景色を完全な黒にする (Default: オフ)
     use_pure_black_player_background: false,
-    // チャンネル一覧を実況勢いが強い順に並び替える (Default: オフ)
-    tv_channel_sort_by_jikkyo_force: false,
     // チャンネル切り替えボタンとショートカットキーの上下方向をテレビリモコン準拠にする (Default: オフ)
     tv_channel_up_down_buttons_reverse: false,
     // チャンネル選局のキーボードショートカットを Alt or Option + 数字キー/テンキーに変更する (Default: オフ)
@@ -311,8 +308,8 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
 
     // ***** 設定 → ニコニコ実況 *****
 
-    // 可能であればニコニコ実況にコメントする (Default: オン)
-    prefer_posting_to_nicolive: true,
+    // ニコニコ実況に接続する (Default: オン)
+    connect_to_niconico_jikkyo: true,
     // コメントの速さ (Default: 1倍)
     comment_speed_rate: 1,
     // コメントのフォントサイズ (Default: 34px)
@@ -386,7 +383,6 @@ export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'timetable_genre_colors',
     'show_player_background_image',
     'use_pure_black_player_background',
-    'tv_channel_sort_by_jikkyo_force',
     'tv_channel_up_down_buttons_reverse',
     'tv_channel_selection_requires_alt_key',
     'use_28hour_clock',
@@ -422,7 +418,7 @@ export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'capture_filename_pattern',
     // capture_copy_to_clipboard: 同期無効
     // sync_settings: 同期無効
-    'prefer_posting_to_nicolive',
+    'connect_to_niconico_jikkyo',
     'comment_speed_rate',
     'comment_font_size',
     'close_comment_form_after_sending',

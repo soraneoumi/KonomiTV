@@ -1,5 +1,6 @@
 
 import asyncio
+import contextlib
 import hashlib
 import json
 from datetime import datetime, timedelta
@@ -10,6 +11,7 @@ import httpx2 as httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from fastapi.responses import FileResponse, Response
 from fastapi.security.utils import get_authorization_scheme_param
+from sse_starlette.sse import EventSourceResponse
 from tortoise import connections
 
 from app import logging, schemas
@@ -22,6 +24,7 @@ from app.utils import GetMirakurunAPIEndpointURL, ParseDatetimeStringToJST
 from app.utils.edcb.CtrlCmdUtil import CtrlCmdUtil
 from app.utils.edcb.EDCBUtil import EDCBUtil
 from app.utils.JikkyoClient import JikkyoClient
+from app.utils.NicoliveCommentStream import NicoliveCommentStream
 from app.utils.TSInformation import TSInformation
 
 
@@ -142,7 +145,6 @@ async def ChannelsAPI():
             'channel_number': channel.channel_number,
             'type': channel.type,
             'name': channel.name,
-            'jikkyo_force': channel.jikkyo_force,
             'is_subchannel': channel.is_subchannel,
             'is_radiochannel': channel.is_radiochannel,
             'is_watchable': True,
@@ -530,16 +532,16 @@ async def ChannelLogoAPI(
 
 @router.get(
     '/{channel_id}/jikkyo',
-    summary = 'ニコニコ実況 WebSocket URL API',
-    response_description = 'ニコニコ実況コメント送受信用 WebSocket API の情報。',
-    response_model = schemas.JikkyoWebSocketInfo,
+    summary = 'ニコニコ実況セッション情報 API',
+    response_description = 'ニコニコ実況のコメントの有無と、コメント投稿用の視聴セッションの情報。',
+    response_model = schemas.JikkyoSessionInfo,
 )
-async def ChannelJikkyoWebSocketInfoAPI(
+async def ChannelJikkyoSessionInfoAPI(
     request: Request,
     channel: Annotated[Channel, Depends(GetChannel)],
 ):
     """
-    指定されたチャンネルに対応する、ニコニコ実況コメント送受信用 WebSocket API の情報を取得する。
+    指定されたチャンネルにニコニコ実況のコメントがあるかどうかと、ログイン中のユーザーがコメントを投稿するための視聴セッションの情報を取得する。
     """
 
     # もし Authorization ヘッダーがあるなら、ログイン中のユーザーアカウントを取得する
@@ -556,6 +558,48 @@ async def ChannelJikkyoWebSocketInfoAPI(
         except HTTPException:
             pass
 
-    # ニコニココメント送受信用 WebSocket API の情報を取得する
+    # ニコニコ実況のセッション情報を取得する
     jikkyo_client = JikkyoClient(channel.network_id, channel.service_id)
-    return await jikkyo_client.fetchWebSocketInfo(current_user)
+    return await jikkyo_client.fetchSessionInfo(current_user)
+
+
+@router.get(
+    '/{channel_id}/jikkyo/comments',
+    summary = 'ニコニコ実況コメント API',
+    response_class = Response,
+    responses = {
+        status.HTTP_200_OK: {
+            'description': 'ニコニコ実況のコメントが随時配信されるイベントストリーム。',
+            'content': {'text/event-stream': {}},
+        }
+    }
+)
+async def ChannelJikkyoCommentsAPI(
+    channel: Annotated[Channel, Depends(GetChannel)],
+):
+    """
+    指定されたチャンネルのニコニコ実況のコメントを Server-Sent Events で随時配信する。
+
+    イベントには、
+    - 接続時に最近のコメントを配信する **initial**
+    - 接続時と変化時にニコニコ実況との接続状態を配信する **status**
+    - 新しいコメントを配信する **comments**
+    の3種類がある。
+    """
+
+    nicochannel_id = JikkyoClient(channel.network_id, channel.service_id).nicochannel_id
+    if nicochannel_id is None:
+        logging.error(f'[ChannelsRouter][ChannelJikkyoCommentsAPI] This channel has no niconico jikkyo channel. [channel_id: {channel.id}]')
+        raise HTTPException(
+            status_code = status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail = 'This channel has no niconico jikkyo channel',
+        )
+
+    async def generator():
+        # aclosing() makes a client disconnect end the subscription at once, instead of whenever the
+        # abandoned generator happens to be collected; the stream counts subscribers to know when to stop.
+        async with contextlib.aclosing(NicoliveCommentStream.subscribe(nicochannel_id)) as events:
+            async for event in events:
+                yield {'event': event.event, 'data': json.dumps(event.data, ensure_ascii=False)}
+
+    return EventSourceResponse(generator())

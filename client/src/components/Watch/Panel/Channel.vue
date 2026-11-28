@@ -28,13 +28,6 @@
                                     :src="`${Utils.api_base_url}/channels/${channel.id}/logo`">
                                 <div class="channel__broadcaster-content">
                                     <span class="channel__broadcaster-name">Ch: {{channel.channel_number}} {{channel.name}}</span>
-                                    <div class="channel__broadcaster-force"
-                                        :class="`channel__broadcaster-force--${ChannelUtils.getChannelForceType(channel.jikkyo_force)}`">
-                                        <svg class="iconify iconify--fa-solid" width="9.63px" height="11px" viewBox="0 0 448 512">
-                                            <path fill="currentColor" d="M323.56 51.2c-20.8 19.3-39.58 39.59-56.22 59.97C240.08 73.62 206.28 35.53 168 0C69.74 91.17 0 209.96 0 281.6C0 408.85 100.29 512 224 512s224-103.15 224-230.4c0-53.27-51.98-163.14-124.44-230.4zm-19.47 340.65C282.43 407.01 255.72 416 226.86 416C154.71 416 96 368.26 96 290.75c0-38.61 24.31-72.63 72.79-130.75c6.93 7.98 98.83 125.34 98.83 125.34l58.63-66.88c4.14 6.85 7.91 13.55 11.27 19.97c27.35 52.19 15.81 118.97-33.43 153.42z"></path>
-                                        </svg>
-                                        <span class="ml-1">{{channel.jikkyo_force ?? '--'}}</span>
-                                    </div>
                                 </div>
                             </div>
                             <div class="channel__program-present">
@@ -76,7 +69,7 @@ import { defineComponent } from 'vue';
 
 import useChannelsStore from '@/stores/ChannelsStore';
 import usePlayerStore from '@/stores/PlayerStore';
-import Utils, { ChannelUtils, ProgramUtils } from '@/utils';
+import Utils, { ProgramUtils } from '@/utils';
 
 export default defineComponent({
     name: 'Panel-ChannelTab',
@@ -89,7 +82,6 @@ export default defineComponent({
 
             // ユーティリティをテンプレートで使えるように
             Utils: Object.freeze(Utils),
-            ChannelUtils: Object.freeze(ChannelUtils),
             ProgramUtils: Object.freeze(ProgramUtils),
 
             // 現在アクティブなタブ
@@ -384,26 +376,6 @@ export default defineComponent({
                             }
                         }
 
-                        &-force {
-                            display: flex;
-                            align-items: center;
-                            flex-shrink: 0;
-                            margin-top: 2px;
-                            margin-left: auto;
-                            padding-left: 6px;
-                            font-size: 12px;
-                            color: rgb(var(--v-theme-text-darken-1));
-
-                            &--festival {
-                                color: #E7556E;
-                            }
-                            &--so-many {
-                                color: #E76B55;
-                            }
-                            &--many {
-                                color: #E7A355;
-                            }
-                        }
                     }
 
                     .channel__program-present {

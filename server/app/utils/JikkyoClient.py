@@ -6,21 +6,18 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime
-from typing import Any, ClassVar, Literal, NotRequired, TypedDict, cast
+from typing import Any, ClassVar, Literal, NotRequired, TypedDict
 
 import httpx2 as httpx
-from bs4 import BeautifulSoup
 
 from app import logging, schemas
-from app.constants import API_REQUEST_HEADERS, HTTPX_CLIENT, JIKKYO_CHANNELS_PATH, JST
+from app.constants import API_REQUEST_HEADERS, HTTPX_CLIENT, JIKKYO_CHANNELS_PATH
 from app.models.User import User
-from app.utils import ParseDatetimeStringToJST
-
-
-class JikkyoChannelStatus(TypedDict):
-    force: int
-    viewers: int
-    comments: int
+from app.utils.NicoliveCommentStream import (
+    NAMED_COLOR_CODES,
+    FetchNicoliveProgram,
+    NicoliveUnavailable,
+)
 
 
 class JikkyoClient:
@@ -33,7 +30,7 @@ class JikkyoClient:
 
     # 旧来の実況チャンネル ID とニコニコチャンネル ID のマッピング
     ## 現在アクティブ (実況可能) なニコニコ実況チャンネルがここに記載されている
-    ## id が None のチャンネルは NX-Jikkyo にのみ存在する実況チャンネル
+    ## A channel mapped to None has no niconico channel, so it has past-log comments only
     JIKKYO_CHANNEL_ID_MAP: ClassVar[dict[str, str | None]] = {
         'jk1': 'ch2646436',
         'jk2': 'ch2646437',
@@ -72,40 +69,19 @@ class JikkyoClient:
 
     # ニコニコの色指定と 16 進数カラーコードのマッピング
     COLOR_CODE_MAP: ClassVar[dict[str, str]] = {
-        'white': '#FFEAEA',
-        'red': '#F02840',
-        'pink': '#FD7E80',
-        'orange': '#FDA708',
-        'yellow': '#FFE133',
-        'green': '#64DD17',
-        'cyan': '#00D4F5',
-        'blue': '#4763FF',
-        'purple': '#D500F9',
-        'black': '#1E1310',
-        'white2': '#CCCC99',
-        'niconicowhite': '#CCCC99',
-        'red2': '#CC0033',
-        'truered': '#CC0033',
-        'pink2': '#FF33CC',
-        'orange2': '#FF6600',
-        'passionorange': '#FF6600',
-        'yellow2': '#999900',
-        'madyellow': '#999900',
-        'green2': '#00CC66',
-        'elementalgreen': '#00CC66',
-        'cyan2': '#00CCCC',
-        'blue2': '#3399FF',
-        'marineblue': '#3399FF',
-        'purple2': '#6633CC',
-        'nobleviolet': '#6633CC',
-        'black2': '#666666',
+        **NAMED_COLOR_CODES,
+        # Older names of the second set of colours, still found in past-log comments
+        'niconicowhite': NAMED_COLOR_CODES['white2'],
+        'truered': NAMED_COLOR_CODES['red2'],
+        'passionorange': NAMED_COLOR_CODES['orange2'],
+        'madyellow': NAMED_COLOR_CODES['yellow2'],
+        'elementalgreen': NAMED_COLOR_CODES['green2'],
+        'marineblue': NAMED_COLOR_CODES['blue2'],
+        'nobleviolet': NAMED_COLOR_CODES['purple2'],
     }
 
     # ニコ生の特殊コマンド付きコメントのフィルタ正規表現
     SPECIAL_COMMAND_COMMENT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r'^/[a-z][a-z0-9_-]*(?:\s|$)')
-
-    # 実況チャンネルのステータスをキャッシュするための辞書
-    __jikkyo_channels_statuses: ClassVar[dict[str, JikkyoChannelStatus]] = {}
 
 
     def __init__(self, network_id: int, service_id: int) -> None:
@@ -124,7 +100,7 @@ class JikkyoClient:
         self.jikkyo_id: str | None = self.__getJikkyoChannelID()
 
         # 実況チャンネル ID に対応するニコニコチャンネル ID を取得する
-        # ニコニコチャンネル ID が存在しない実況チャンネルは NX-Jikkyo にのみ存在する
+        # A jikkyo channel without a niconico channel has past-log comments only
         if (self.jikkyo_id in JikkyoClient.JIKKYO_CHANNEL_ID_MAP) and \
            (JikkyoClient.JIKKYO_CHANNEL_ID_MAP[self.jikkyo_id] is not None):
             self.nicochannel_id: str | None = JikkyoClient.JIKKYO_CHANNEL_ID_MAP[self.jikkyo_id]
@@ -196,151 +172,59 @@ class JikkyoClient:
         return None
 
 
-    async def getStatus(self) -> JikkyoChannelStatus | None:
+    async def fetchSessionInfo(self, current_user: User | None) -> schemas.JikkyoSessionInfo:
         """
-        実況チャンネルの現在のステータスを取得する (ステータス更新は updateStatuses() で行う)
-        戻り値は force: 実況勢い / viewers: 累計視聴者数 / comments: 累計コメント数 の各カウントの辞書だが、force 以外は現在未使用
-
-        Returns:
-            JikkyoChannelStatus | None: 実況チャンネルのステータス
-        """
-
-        # ネットワーク ID + サービス ID に対応するニコニコ実況チャンネルがない場合は None を返す
-        ## 実況チャンネルが昔から存在しない CS や、2020年12月のニコニコ実況リニューアルで廃止された BS スカパーのチャンネルなどが該当
-        if self.jikkyo_id is None or self.jikkyo_id not in self.__jikkyo_channels_statuses:
-            return None
-
-        # このインスタンスに紐づく実況チャンネルのステータスを返す
-        return self.__jikkyo_channels_statuses[self.jikkyo_id]
-
-
-    @classmethod
-    async def updateStatuses(cls) -> None:
-        """
-        全ての実況チャンネルのステータスを更新する
-        更新したステータスは getStatus() で取得できる
-        """
-
-        # NX-Jikkyo のチャンネル情報 API から実況チャンネルのステータスを取得する
-        ## サーバー混雑時は若干時間がかかることがあるのでタイムアウトを 5 秒に伸ばしている
-        try:
-            async with HTTPX_CLIENT() as client:
-                response = await client.get('https://nx-jikkyo.tsukumijima.net/api/v1/channels', timeout=5.0)
-                response.raise_for_status()
-                channels_data = response.json()
-        except (httpx.NetworkError, httpx.TimeoutException, httpx.HTTPStatusError):
-            # エラー発生時はステータス更新を中断
-            return
-
-        # 現在時刻に対応するスレッドから実況チャンネルのステータスを取得する
-        current_time = datetime.now(JST)
-        for channel in channels_data:
-            jikkyo_id = channel['id']
-            if jikkyo_id in cls.JIKKYO_CHANNEL_ID_MAP:
-                for thread in channel['threads']:
-                    # NX-Jikkyo から取得した時刻文字列を、サーバー内部の時刻基準と一致させるため JST aware datetime に正規化する
-                    thread_start_time = ParseDatetimeStringToJST(thread['start_at'])
-                    thread_end_time = ParseDatetimeStringToJST(thread['end_at'])
-
-                    if thread_start_time <= current_time <= thread_end_time:
-                        cls.__jikkyo_channels_statuses[jikkyo_id] = {
-                            'force': thread['jikkyo_force'],
-                            'viewers': thread['viewers'],
-                            'comments': thread['comments'],
-                        }
-                        break
-
-
-    async def fetchWebSocketInfo(self, current_user: User | None) -> schemas.JikkyoWebSocketInfo:
-        """
-        ニコニコ実況・NX-Jikkyo とコメントを送受信するための WebSocket API の情報を取得する
-        2024/08/05 以降の新ニコニコ生放送でコメントサーバーが刷新された影響で、従来 KonomiTV で実装していた
-        「ブラウザから直接ニコ生の WebSocket API に接続しコメントを送受信する」手法が使えなくなったため、
-        デフォルトでは NX-Jikkyo の旧ニコニコ生放送互換 WebSocket API (視聴セッション・コメントセッション) の URL を返す
-        ログイン中かつニコニコアカウントと連携している場合のみ、ニコ生の WebSocket API (視聴セッションのみ) の URL も返す
-        最終的にどちらの「視聴セッション維持用 WebSocket API」に接続するか (=どちらにコメントを送信するか) はフロントエンドの裁量で決められる
-        いずれの場合でも、「コメント受信用 WebSocket API」には常に NX-Jikkyo の WebSocket API を利用する
+        Tell the browser whether live comments exist for this channel and, for a user with a linked
+        niconico account, give it that user's own watch session so it can post comments.
+        Comments are received through the server's relay (NicoliveCommentStream) in every case; the
+        user's watch session is only needed to post, because niconico requires a logged-in session for it.
 
         Args:
             current_user (User | None): ログイン中のユーザーのモデルオブジェクト
 
         Returns:
-            schemas.JikkyoWebSocketInfo: ニコニコ実況・NX-Jikkyo とコメントを送受信するための WebSocket API の情報
+            schemas.JikkyoSessionInfo: ニコニコ実況のセッション情報
         """
-
-        # 現在は NX-Jikkyo のみ存在するニコニコ実況チャンネルかどうかを表すフラグ
-        ## 実況チャンネル ID に対応するニコニコチャンネル ID が存在しない場合、NX-Jikkyo 固有のニコニコ実況チャンネルと判定する (jk141 など)
-        is_nxjikkyo_exclusive = self.nicochannel_id is None
 
         # ネットワーク ID + サービス ID に対応するニコニコ実況チャンネルがない場合
         ## 実況チャンネルが昔から存在しない CS や、2020年12月のニコニコ実況リニューアルで廃止された BS スカパーのチャンネルなどが該当
-        if self.jikkyo_id is None:
-            return schemas.JikkyoWebSocketInfo(
-                watch_session_url = None,
+        if self.nicochannel_id is None:
+            return schemas.JikkyoSessionInfo(
+                is_available = False,
                 nicolive_watch_session_url = None,
                 nicolive_watch_session_error = None,
-                comment_session_url = None,
-                is_nxjikkyo_exclusive = is_nxjikkyo_exclusive,
             )
 
-        # NX-Jikkyo の旧ニコニコ生放送「視聴セッション維持用 WebSocket API」互換の WebSocket API の URL を生成
-        watch_session_url = f'wss://nx-jikkyo.tsukumijima.net/api/v1/channels/{self.jikkyo_id}/ws/watch'
-
-        # NX-Jikkyo の旧ニコニコ生放送「コメント受信用 WebSocket API」互換の WebSocket API の URL を生成
-        comment_session_url = f'wss://nx-jikkyo.tsukumijima.net/api/v1/channels/{self.jikkyo_id}/ws/comment'
-
-        # 現在は NX-Jikkyo のみ存在するニコニコ実況チャンネル or 未ログイン or ニコニコアカウントと連携していない場合は、
-        # ニコ生側の「視聴セッション維持用 WebSocket API」の URL は取得せず、そのまま NX-Jikkyo の WebSocket API の URL のみを返す
-        if is_nxjikkyo_exclusive is True or current_user is None or not all([
+        # Without a linked account there is nothing to post with, so only the relay is used
+        if current_user is None or not all([
             current_user.niconico_user_id,
             current_user.niconico_user_name,
             current_user.niconico_access_token,
             current_user.niconico_refresh_token,
         ]):
-            return schemas.JikkyoWebSocketInfo(
-                watch_session_url = watch_session_url,
+            return schemas.JikkyoSessionInfo(
+                is_available = True,
                 nicolive_watch_session_url = None,
                 nicolive_watch_session_error = None,
-                comment_session_url = comment_session_url,
-                is_nxjikkyo_exclusive = is_nxjikkyo_exclusive,
             )
 
-        # ログイン中かつニコニコアカウントと連携している場合のみ、ニコ生側の「視聴セッション維持用 WebSocket API」の URL を取得する
-        ## 2024/08/05 以降も「視聴セッション維持用 WebSocket API」は一部変更の上で継続運用されており、コメント送信インターフェイスも変わらない
-        ## この「視聴セッション維持用 WebSocket API」に接続できれば、NX-Jikkyo の代わりに本家ニコニコ実況にコメントを投稿できる
-        ## この「視聴セッション維持用 WebSocket API」を取得できなかった場合は、NX-Jikkyo の WebSocket API の URL のみを返す
-        ## このとき、フロントエンドではユーザーの設定に関わらず、フォールバックとして NX-Jikkyo の「視聴セッション維持用 WebSocket API」に接続する
+        # 実況チャンネル ID に対応するニコニコチャンネルで現在放送中のニコニコ生放送番組の ID を取得する
+        try:
+            nicolive_program = await FetchNicoliveProgram(self.nicochannel_id)
+        except NicoliveUnavailable as ex:
+            logging.warning(f'[fetchSessionInfo][{self.nicochannel_id}] Failed to get currently broadcasting nicolive program id. ({ex.detail})')
+            return schemas.JikkyoSessionInfo(
+                is_available = True,
+                nicolive_watch_session_url = None,
+                nicolive_watch_session_error = ex.detail,
+            )
 
         try:
-            # 実況チャンネル ID に対応するニコニコチャンネルで現在放送中のニコニコ生放送番組の ID を取得する
-            nicolive_program_id = None
-            async with HTTPX_CLIENT() as client:
-                response = await client.get(f'https://ch.nicovideo.jp/{self.nicochannel_id}/live')
-                response.raise_for_status()
-                soup = BeautifulSoup(response.content, 'html.parser')
-                live_now = soup.find('div', id='live_now')
-                if live_now:
-                    live_link = live_now.find('a', href=lambda href: bool(href and href.startswith('https://live.nicovideo.jp/watch/lv')))  # type: ignore
-                    if live_link:
-                        nicolive_program_id = cast(str, live_link.get('href')).split('/')[-1]
-
-            # 何らかの理由で放送中のニコニコ生放送番組が取得できなかった
-            ## メンテナンス中などで実況番組が放送されていないか、ニコニコチャンネルの HTML 構造が変更された可能性が高い
-            if nicolive_program_id is None:
-                logging.warning(f'[fetchWebSocketInfo][{self.nicochannel_id}] Failed to get currently broadcasting nicolive program id.')
-                return schemas.JikkyoWebSocketInfo(
-                    watch_session_url = watch_session_url,
-                    nicolive_watch_session_url = None,
-                    nicolive_watch_session_error = '現在放送中のニコニコ実況番組が見つかりませんでした。',
-                    comment_session_url = comment_session_url,
-                    is_nxjikkyo_exclusive = is_nxjikkyo_exclusive,
-                )
-
             # 視聴セッションの WebSocket URL を取得する
             ## レスポンスで取得できる WebSocket に接続すると、ログイン中のユーザーに紐づくニコニコアカウントでコメントできる
             wsendpoint_api_url = (
                 'https://api.live2.nicovideo.jp/api/v1/wsendpoint?'
-                f'nicoliveProgramId={nicolive_program_id}&userId={current_user.niconico_user_id}'
+                f'nicoliveProgramId={nicolive_program.program_id}&userId={current_user.niconico_user_id}'
             )
 
             async def get_session():  # 使い回せるように関数化
@@ -358,13 +242,11 @@ class JikkyoClient:
                     await current_user.refreshNiconicoAccessToken()
                 except Exception as ex:
                     # アクセストークンのリフレッシュに失敗した
-                    logging.warning(f'[fetchWebSocketInfo][{self.nicochannel_id}] Failed to refresh niconico access token. ({ex.args[0]})')
-                    return schemas.JikkyoWebSocketInfo(
-                        watch_session_url = watch_session_url,
+                    logging.warning(f'[fetchSessionInfo][{self.nicochannel_id}] Failed to refresh niconico access token. ({ex.args[0]})')
+                    return schemas.JikkyoSessionInfo(
+                        is_available = True,
                         nicolive_watch_session_url = None,
                         nicolive_watch_session_error = ex.args[0],
-                        comment_session_url = comment_session_url,
-                        is_nxjikkyo_exclusive = is_nxjikkyo_exclusive,
                     )
                 wsendpoint_api_response = await get_session()
 
@@ -375,37 +257,30 @@ class JikkyoClient:
                     error_code = f' ({wsendpoint_api_response.json()["meta"]["errorCode"]})'
                 except Exception:
                     pass
-                logging.warning(f'[fetchWebSocketInfo][{self.nicochannel_id}] Failed to get nicolive watch session url. '
+                logging.warning(f'[fetchSessionInfo][{self.nicochannel_id}] Failed to get nicolive watch session url. '
                               f'({wsendpoint_api_response.status_code}{error_code})')
-                return schemas.JikkyoWebSocketInfo(
-                    watch_session_url = watch_session_url,
+                return schemas.JikkyoSessionInfo(
+                    is_available = True,
                     nicolive_watch_session_url = None,
                     nicolive_watch_session_error = (
                         '現在、ニコニコ生放送でエラーが発生しています。'
                         f'(HTTP Error {wsendpoint_api_response.status_code}{error_code})'
                     ),
-                    comment_session_url = comment_session_url,
-                    is_nxjikkyo_exclusive = is_nxjikkyo_exclusive,
                 )
 
         # 接続エラー（サーバー再起動やタイムアウトなど）
         except (httpx.NetworkError, httpx.TimeoutException):
-            logging.warning(f'[fetchWebSocketInfo][{self.nicochannel_id}] Failed to connect to nicolive.')
-            return schemas.JikkyoWebSocketInfo(
-                watch_session_url = watch_session_url,
+            logging.warning(f'[fetchSessionInfo][{self.nicochannel_id}] Failed to connect to nicolive.')
+            return schemas.JikkyoSessionInfo(
+                is_available = True,
                 nicolive_watch_session_url = None,
                 nicolive_watch_session_error = 'ニコニコ生放送に接続できませんでした。ニコニコで障害が発生している可能性があります。',
-                comment_session_url = comment_session_url,
-                is_nxjikkyo_exclusive = is_nxjikkyo_exclusive,
             )
 
-        # NX-Jikkyo のに加え、ニコ生側の「視聴セッション維持用 WebSocket API」の URL も併せて返す
-        return schemas.JikkyoWebSocketInfo(
-            watch_session_url = watch_session_url,
+        return schemas.JikkyoSessionInfo(
+            is_available = True,
             nicolive_watch_session_url = wsendpoint_api_response.json()['data']['url'],
             nicolive_watch_session_error = None,
-            comment_session_url = comment_session_url,
-            is_nxjikkyo_exclusive = is_nxjikkyo_exclusive,
         )
 
 

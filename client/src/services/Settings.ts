@@ -45,7 +45,6 @@ export interface IClientSettings {
     timetable_genre_colors: ITimeTableGenreColors;
     show_player_background_image: boolean;
     use_pure_black_player_background: boolean;
-    tv_channel_sort_by_jikkyo_force: boolean;
     tv_channel_up_down_buttons_reverse: boolean;
     tv_channel_selection_requires_alt_key: boolean;
     use_28hour_clock: boolean;
@@ -81,7 +80,7 @@ export interface IClientSettings {
     capture_filename_pattern: string;
     // capture_copy_to_clipboard: 同期無効
     // sync_settings: 同期無効
-    prefer_posting_to_nicolive: boolean;
+    connect_to_niconico_jikkyo: boolean;
     comment_speed_rate: number;
     comment_font_size: number;
     close_comment_form_after_sending: boolean;

@@ -46,6 +46,7 @@ from app.routers import (
 from app.streams.LiveStream import LiveStream
 from app.utils.edcb.EDCBTuner import EDCBTuner
 from app.utils.FastAPITaskUtil import repeat_every
+from app.utils.NicoliveCommentStream import NicoliveCommentStream
 
 
 # もし Config() の実行時に AssertionError が発生した場合は、LoadConfig() を実行してサーバー設定データをロードする
@@ -231,9 +232,6 @@ async def Startup():
     # チャンネル情報を更新
     await Channel.update()
 
-    # ニコニコ実況関連のステータスを更新
-    await Channel.updateJikkyoStatus()
-
     # 番組情報を更新
     await Program.update()
 
@@ -267,14 +265,7 @@ async def Startup():
 )
 async def UpdateChannelAndProgram():
     await Channel.update()
-    await Channel.updateJikkyoStatus()
     await Program.update(multiprocess=True)
-
-# 30秒に1回、ニコニコ実況関連のステータスを更新する
-@app.on_event('startup')
-@repeat_every(seconds=0.5 * 60, wait_first=0.5 * 60, logger=logging.logger)
-async def UpdateChannelJikkyoStatus():
-    await Channel.updateJikkyoStatus()
 
 # サーバーの終了時に実行する
 cleanup = False
@@ -294,6 +285,9 @@ async def Shutdown():
     # 全てのチューナーインスタンスを終了する (EDCB バックエンドのみ)
     if CONFIG.general.backend == 'EDCB':
         await EDCBTuner.closeAll()
+
+    # Comment relays hold open connections to niconico; close them before the event loop goes away.
+    await NicoliveCommentStream.closeAll()
 
     # 録画とキャプチャの走査・監視タスクを停止
     global capture_scan_task

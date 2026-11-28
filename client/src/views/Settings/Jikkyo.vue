@@ -47,21 +47,13 @@
                 </v-btn>
             </div>
             <div class="settings__item settings__item--switch">
-                <label class="settings__item-heading" for="prefer_posting_to_nicolive">可能であればニコニコ実況にコメントする</label>
-                <label class="settings__item-label" for="prefer_posting_to_nicolive">
-                    <ul class="ml-4 mb-2 font-weight-bold">
-                        <li>オン：<a class="link" href="https://jk.nicovideo.jp" target="_blank">ニコニコ実況</a> に優先的にコメントを送信</li>
-                        <li>オフ：<a class="link" href="https://nx-jikkyo.tsukumijima.net" target="_blank">NX-Jikkyo</a> にコメントを送信</li>
-                    </ul>
-                    ニコニコ実況が利用できない場合（BS 民放など公式では廃止された実況チャンネル・ニコニコ生放送のメンテナンス中など）は、常に NX-Jikkyo にコメントします。
-                    <div class="mt-2"></div>
-                    ニコニコ実況にコメントするには、ニコニコアカウントとの連携が必要です。<br>
-                    NX-Jikkyo は「ニコニコ実況の Web 版非公式コメントビューア」＋「ニコニコ実況公式にない実況チャンネルを補完する互換コメントサーバー」で、アカウント不要でコメントできます。<br>
-                    <div class="mt-2"></div>
-                    ニコニコアカウント未連携でのコメント送信時に「代わりに NX-Jikkyo にコメントします」という通知を表示しないようにするには、この設定をオフにしてください。
+                <label class="settings__item-heading" for="connect_to_niconico_jikkyo">ニコニコ実況に接続する</label>
+                <label class="settings__item-label" for="connect_to_niconico_jikkyo">
+                    オンにすると、ライブ視聴中にニコニコ実況のコメントを受信します。ニコニコアカウントと連携していれば、コメントの送信もできます。<br>
+                    オフにすると、ニコニコ実況には一切接続しません。ニコニコ実況で障害が発生しているときなどにオフにしてください。<br>
                 </label>
-                <v-switch class="settings__item-switch" color="primary" id="prefer_posting_to_nicolive" hide-details
-                    v-model="settingsStore.settings.prefer_posting_to_nicolive">
+                <v-switch class="settings__item-switch" color="primary" id="connect_to_niconico_jikkyo" hide-details
+                    v-model="settingsStore.settings.connect_to_niconico_jikkyo">
                 </v-switch>
             </div>
             <div class="settings__item">
@@ -90,7 +82,7 @@
             <div class="settings__item settings__item--switch settings__item--sync-disabled">
                 <label class="settings__item-heading" for="show_comment">コメントを表示</label>
                 <label class="settings__item-label" for="show_comment">
-                    プレイヤーにニコニコ実況 / NX-Jikkyo のコメントを流すかどうかを設定します。<br>
+                    プレイヤーにニコニコ実況のコメントを流すかどうかを設定します。<br>
                     コメントを非表示にしても、画面右側にあるパネルのコメントリストには表示されます。<br>
                 </label>
                 <v-switch class="settings__item-switch" color="primary" id="show_comment" hide-details

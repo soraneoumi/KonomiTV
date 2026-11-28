@@ -83,7 +83,6 @@ class ClientSettings(BaseModel):
     }
     show_player_background_image: bool = True
     use_pure_black_player_background: bool = False
-    tv_channel_sort_by_jikkyo_force: bool = False
     tv_channel_up_down_buttons_reverse: bool = False
     tv_channel_selection_requires_alt_key: bool = False
     use_28hour_clock: bool = False
@@ -119,7 +118,7 @@ class ClientSettings(BaseModel):
     capture_filename_pattern: str = 'Capture_%date%-%time%'
     # capture_copy_to_clipboard: 同期無効
     # sync_settings: 同期無効
-    prefer_posting_to_nicolive: bool = True
+    connect_to_niconico_jikkyo: bool = True
     comment_speed_rate: Annotated[float, PositiveFloat] = 1.0
     comment_font_size: Annotated[int, PositiveInt] = 34
     close_comment_form_after_sending: bool = True

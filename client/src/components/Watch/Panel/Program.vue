@@ -32,13 +32,7 @@
                 {{ProgramUtils.getProgramTime(channelsStore.channel.current.program_following)}}
             </div>
             <div class="program-info__status">
-                <div class="program-info__status-force"
-                    :class="`program-info__status-force--${ChannelUtils.getChannelForceType(channelsStore.channel.current.jikkyo_force)}`">
-                    <Icon icon="fa-solid:fire-alt" height="14px" />
-                    <span class="ml-2">勢い:</span>
-                    <span class="ml-2">{{channelsStore.channel.current.jikkyo_force ?? '--'}} コメ/分</span>
-                </div>
-                <div class="program-info__status-viewers ml-5">
+                <div class="program-info__status-viewers">
                     <Icon icon="fa-solid:eye" height="14px" />
                     <span class="ml-2">視聴数:</span>
                     <span class="ml-1">{{channelsStore.channel.current.viewer_count}}</span>
@@ -136,7 +130,7 @@ import Message from '@/message';
 import Reservations, { IReservation } from '@/services/Reservations';
 import useChannelsStore from '@/stores/ChannelsStore';
 import useServerSettingsStore from '@/stores/ServerSettingsStore';
-import Utils, { ChannelUtils, ProgramUtils } from '@/utils';
+import Utils, { ProgramUtils } from '@/utils';
 
 export default defineComponent({
     name: 'Panel-ProgramTab',
@@ -144,7 +138,6 @@ export default defineComponent({
         return {
             // ユーティリティをテンプレートで使えるように
             Utils: Object.freeze(Utils),
-            ChannelUtils: Object.freeze(ChannelUtils),
             ProgramUtils: Object.freeze(ProgramUtils),
 
             // 現在の番組に対する録画予約情報
@@ -759,19 +752,9 @@ export default defineComponent({
                 font-size: 12px;
             }
 
-            &-force, &-viewers {
+            &-viewers {
                 display: flex;
                 align-items: center;
-            }
-
-            &-force--festival {
-                color: #E7556E;
-            }
-            &-force--so-many {
-                color: #E76B55;
-            }
-            &-force--many {
-                color: #E7A355;
             }
         }
     }

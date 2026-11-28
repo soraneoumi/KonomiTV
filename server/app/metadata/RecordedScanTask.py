@@ -1163,7 +1163,6 @@ class RecordedScanTask:
         db_channel.channel_number = channel_schema.channel_number
         db_channel.type = channel_schema.type
         db_channel.name = channel_schema.name
-        db_channel.jikkyo_force = channel_schema.jikkyo_force
         db_channel.is_subchannel = channel_schema.is_subchannel
         db_channel.is_radiochannel = channel_schema.is_radiochannel
         db_channel.is_watchable = channel_schema.is_watchable

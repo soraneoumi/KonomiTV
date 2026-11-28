@@ -20,7 +20,6 @@ from app.utils import GetMirakurunAPIEndpointURL
 from app.utils.edcb import ChSet5Item
 from app.utils.edcb.CtrlCmdUtil import CtrlCmdUtil
 from app.utils.edcb.EDCBUtil import EDCBUtil
-from app.utils.JikkyoClient import JikkyoClient
 from app.utils.TSInformation import TSInformation
 
 
@@ -48,7 +47,6 @@ class Channel(TortoiseModel):
     channel_number = fields.CharField(255)
     type = cast(TortoiseField[Literal['GR', 'BS', 'CS', 'CATV', 'SKY', 'BS4K']], fields.CharField(255))
     name = fields.TextField()
-    jikkyo_force = cast(TortoiseField[int | None], fields.IntField(null=True))
     is_subchannel = fields.BooleanField()
     is_radiochannel = fields.BooleanField()
     is_watchable = fields.BooleanField()
@@ -232,7 +230,6 @@ class Channel(TortoiseModel):
                 channel.remocon_id = int(service['remoteControlKeyId']) if ('remoteControlKeyId' in service) else 0
                 channel.type = channel_type
                 channel.name = TSInformation.formatString(service['name'])
-                channel.jikkyo_force = None
                 channel.is_watchable = True  # 下記条件を満たすチャンネルでない限り、ライブ視聴可能なチャンネルとして登録する
 
                 # すでに閉局済みの BS チャンネルを is_watchable = False に設定
@@ -427,7 +424,6 @@ class Channel(TortoiseModel):
                 channel.remocon_id = int(service['remocon_id'])  # EDCB-240213 未満の EDCB では ChSet5.txt からリモコン番号を取得できず、常に 0 になる
                 channel.type = channel_type
                 channel.name = TSInformation.formatString(service['service_name'])
-                channel.jikkyo_force = None
                 channel.is_watchable = True  # 下記条件を満たすチャンネルでない限り、ライブ視聴可能なチャンネルとして登録する
 
                 # すでに閉局済みの BS チャンネルを is_watchable = False に設定
@@ -624,27 +620,3 @@ class Channel(TortoiseModel):
 
         # 現在の番組情報、次の番組情報のタプルを返す
         return (program_present, program_following)
-
-
-    @classmethod
-    async def updateJikkyoStatus(cls) -> None:
-        """ チャンネル情報のうち、ニコニコ実況関連のステータスを更新する """
-
-        # 全ての実況チャンネルのステータスを更新
-        await JikkyoClient.updateStatuses()
-
-        # 全てのチャンネル情報を取得
-        channels = await Channel.filter(is_watchable=True)
-
-        # チャンネル情報ごとに
-        for channel in channels:
-
-            # 実況チャンネルのステータスを取得
-            jikkyo_client = JikkyoClient(channel.network_id, channel.service_id)
-            status = await jikkyo_client.getStatus()
-
-            # ステータスが None（実況チャンネル自体が存在しないか、なんらかの問題で実況枠が存在しない）でなく、
-            # force が -1 (何らかのエラー) でなければステータスを更新
-            if status is not None and status['force'] != -1:
-                channel.jikkyo_force = status['force']
-                await channel.save()

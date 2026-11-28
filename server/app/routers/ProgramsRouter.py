@@ -435,7 +435,7 @@ async def TimeTableAPI(
         channels_query = f"""
             SELECT
                 id, display_channel_id, network_id, service_id, transport_stream_id,
-                remocon_id, channel_number, type, name, jikkyo_force,
+                remocon_id, channel_number, type, name,
                 is_subchannel, is_radiochannel, is_watchable
             FROM channels
             WHERE id IN ({placeholders}) AND is_watchable = 1
@@ -449,7 +449,7 @@ async def TimeTableAPI(
         channels_query = """
             SELECT
                 id, display_channel_id, network_id, service_id, transport_stream_id,
-                remocon_id, channel_number, type, name, jikkyo_force,
+                remocon_id, channel_number, type, name,
                 is_subchannel, is_radiochannel, is_watchable
             FROM channels
             WHERE type = ? AND is_watchable = 1
@@ -461,7 +461,7 @@ async def TimeTableAPI(
         channels_query = """
             SELECT
                 id, display_channel_id, network_id, service_id, transport_stream_id,
-                remocon_id, channel_number, type, name, jikkyo_force,
+                remocon_id, channel_number, type, name,
                 is_subchannel, is_radiochannel, is_watchable
             FROM channels
             WHERE is_watchable = 1

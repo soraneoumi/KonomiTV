@@ -198,27 +198,30 @@ async def test_update_programs__in_another_process_while_main_process_writes(bac
     programs_requested.clear()
     is_update_finished = asyncio.Event()
 
+    # The writes below go to remocon_id because the programme update never reads it, so the programmes it stores do not depend on them
+    original_remocon_id = (await Channel.get(id='NID32736-SID1024')).remocon_id
+
     async def WriteFromMainProcess() -> None:
         """
-        ニコニコ実況の勢いの更新や録画のスキャンのように、メインプロセスから DB への書き込みを続ける
+        Keep writing to the database from the main process, as the recording scan does while programmes are updated
         """
 
-        # 書き込みのたびに、チャンネルの実況の勢いを前回と異なる値に更新する
-        ## SQLite は値が変わらない UPDATE ではデータベースを変更しないため、別プロセスのスナップショットが古くならず、書き込みの衝突を再現できない
-        jikkyo_force = 0
+        # Each write stores a value different from the last one
+        ## SQLite does not change the database for an UPDATE that leaves the value as it is, so the other process's snapshot would never go stale and the write conflict would not happen
+        remocon_id = original_remocon_id
 
         # 別プロセスが番組情報の取得を終えて DB の読み取りを始めるまで、書き込みのトランザクションを維持する
         async with transactions.in_transaction():
-            jikkyo_force += 1
-            await Channel.filter(id='NID32736-SID1024').update(jikkyo_force=jikkyo_force)
+            remocon_id += 1
+            await Channel.filter(id='NID32736-SID1024').update(remocon_id=remocon_id)
             while programs_requested.is_set() is False and is_update_finished.is_set() is False:
                 await asyncio.sleep(0.01)
             await asyncio.sleep(0.5)
 
         # その後も、番組情報の更新が完了するまで短い書き込みを繰り返す
         while is_update_finished.is_set() is False:
-            jikkyo_force += 1
-            await Channel.filter(id='NID32736-SID1024').update(jikkyo_force=jikkyo_force)
+            remocon_id += 1
+            await Channel.filter(id='NID32736-SID1024').update(remocon_id=remocon_id)
             await asyncio.sleep(0.05)
 
     writer = asyncio.create_task(WriteFromMainProcess())
@@ -227,5 +230,5 @@ async def test_update_programs__in_another_process_while_main_process_writes(bac
     finally:
         is_update_finished.set()
         await writer
-        await Channel.filter(id='NID32736-SID1024').update(jikkyo_force=None)
+        await Channel.filter(id='NID32736-SID1024').update(remocon_id=original_remocon_id)
     assert await DumpPrograms() == expected_programs

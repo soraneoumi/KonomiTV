@@ -112,7 +112,6 @@ async def ConvertRowToRecordedProgram(row: dict[str, Any]) -> schemas.RecordedPr
             'channel_number': row['channel_number'],
             'type': row['type'],
             'name': row['ch_name'],
-            'jikkyo_force': row['jikkyo_force'],
             'is_subchannel': bool(row['is_subchannel']),
             'is_radiochannel': bool(row['is_radiochannel']),
             'is_watchable': bool(row['is_watchable']),
@@ -471,7 +470,6 @@ async def VideosAPI(
             ch.channel_number,
             ch.type,
             ch.name AS ch_name,
-            ch.jikkyo_force,
             ch.is_subchannel,
             ch.is_radiochannel,
             ch.is_watchable
@@ -724,7 +722,6 @@ async def VideosSearchAPI(
             ch.channel_number,
             ch.type,
             ch.name AS ch_name,
-            ch.jikkyo_force,
             ch.is_subchannel,
             ch.is_radiochannel,
             ch.is_watchable
